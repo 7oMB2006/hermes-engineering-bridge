@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.DS_Store
+.env
+.env.*
+companion.json
+config.yaml
+agent-bridge/
+dfsc-bridge/
+delivery.json
+*.log

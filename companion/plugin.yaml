@@ -1,0 +1,8 @@
+name: hermes-dfsc
+label: Hermes 工程桥
+version: 0.2.0
+kind: standalone
+description: Local DFSC shared-session engineering dispatch, human approvals and event wakeups.
+author: Local Hermes owner
+provides_tools: [dfsc_engineering]
+provides_hooks: [pre_gateway_dispatch, post_gateway_admission, on_session_start]

@@ -1,0 +1,154 @@
+# Hermes 工程桥插件包安装说明
+
+本仓库适用于 macOS Apple Silicon 和 Windows x64。克隆或解压仓库后，下面命令均从仓库根目录运行；安装市场时选择包含 `.step-plugin/marketplace.json` 的这一层目录。私有仓库的 Git 安装需要当前 Git 已配置主人账号的认证，也可使用本地目录安装。
+
+## 包含什么
+
+| 组件 | 内容与安装位置 |
+| --- | --- |
+| `plugins/hermes-engineering-bridge/` | DFSC 市场资源插件：技能、帮助命令、图标；资源版本 0.1.0 |
+| `companion/` | Hermes 侧插件、配置安装器及说明；companion 0.2 |
+| `ORIGIN.md` | 组件来源、许可与既有验证边界 |
+
+0.6.0 是配套宿主版本。完整派工需要 **DFSC Hermes 0.6.0 宿主内置
+Agent Bridge＋Hermes companion＋独立配对**。普通 DFSC 安装资源插件后只能加载
+资源。仓库不含宿主安装器、Python/Hermes 环境、账号、连接凭据、会话或任务账本。
+
+## 1. 准备宿主与 Hermes
+
+安装对应系统的 DFSC Hermes 私版宿主，打开工程面板，启用接入并授权实际工程根目录。
+普通 DFSC 与专配使用各自的应用和数据目录。现有工程应先暂停或结束，再进行宿主切换。
+
+Hermes 必须已经安装，目标 profile 必须已有 `config.yaml`。沿用它的 Python 环境、
+模型和飞书设置。安装器需要 `hermes_yaml`；任意系统 Python 不一定具备 Hermes 依赖。
+下文的 Python 和源码路径填写为当前 Hermes 安装实际使用的位置，源码根目录需包含
+`hermes_bootstrap.py`。无需克隆 DFSC 源码仓库，也无需向插件包复制 `.env` 或凭据。
+
+## 2. 安装 DFSC 资源插件
+
+在 DFSC 的「插件 → 市场来源 → 添加市场」选择本仓库根目录的绝对路径，在「发现」安装
+`hermes-engineering-bridge`。保持本地仓库目录可访问，以便后续从该市场重新安装。
+安装后可看到 `hermes-bridge-help` 命令与 `hermes-engineering-evidence` 技能。
+此步骤不安装 companion，也不会自动配对或派工。
+
+## 3. 配置并安装 Hermes companion
+
+在仓库根目录创建 `companion.json`，使用 UTF-8 保存。例如 macOS：
+
+```json
+{
+  "schemaVersion": 1,
+  "agentId": "engineering-assistant",
+  "displayName": "工程助手",
+  "workspaceRoots": ["/absolute/path/to/authorized/project"],
+  "roleInstructions": "按主人委托派工，核对原生执行证据后验收。",
+  "titlePrefix": true
+}
+```
+
+Windows 的 `workspaceRoots` 示例为 `["C:\\Projects\\authorized-project"]`。
+填写已经获得授权的绝对目录；每个智能体使用独立 `agentId` 与 profile。
+省略 `bridgeRoot` 时，安装器自动定位当前系统的专配宿主目录：
+
+- macOS：`~/Library/Application Support/DFSC Hermes/agent-bridge`
+- Windows：`%APPDATA%\DFSC Hermes\agent-bridge`
+
+macOS 终端（先替换三处路径，再运行）：
+
+```sh
+HERMES_PYTHON="/absolute/path/to/hermes/environment/bin/python"
+HERMES_SOURCE="/absolute/path/to/hermes-source"
+HERMES_PROFILE_HOME="$HOME/.hermes/profiles/engineering-assistant"
+"$HERMES_PYTHON" -X utf8 companion/install_profile.py --help
+"$HERMES_PYTHON" -X utf8 companion/install_profile.py --hermes-source "$HERMES_SOURCE" --profile-home "$HERMES_PROFILE_HOME" --config companion.json --pair
+```
+
+Windows PowerShell（先替换三处路径，再运行）：
+
+```powershell
+$HermesPython = 'C:\path\to\Hermes\environment\Scripts\python.exe'
+$HermesSource = 'C:\path\to\Hermes\source'
+$HermesProfileHome = Join-Path $env:USERPROFILE '.hermes\profiles\engineering-assistant'
+& $HermesPython -X utf8 companion/install_profile.py --help
+& $HermesPython -X utf8 companion/install_profile.py --hermes-source $HermesSource --profile-home $HermesProfileHome --config companion.json --pair
+```
+
+`--pair` 通过可信管理入口合并宿主的智能体登记，保留其他智能体，生成本身份的独立
+连接描述符。不要手工复制其他身份的 `model.json` / `human.json`。
+安装结果会报告 `backup`、`paired` 与 `reloadRequired`；保留该备份路径。
+安装器不重载或重启网关。已有刻刻／蟹蟹升级时沿用原 `agentId`、职责和目录范围，
+细节见 `companion/README.md`。
+
+## 4. 重载与只读核对
+
+宿主、配置和配对全部成功后，使用 Hermes 官方插件激活或网关重载入口，让对应
+profile 加载新代码。若该插件曾被停用，先运行
+`hermes -p PROFILE_NAME plugins enable hermes-dfsc`，其中 `PROFILE_NAME` 是目标 profile
+的名称。重新运行安装器不自动清除 Hermes 的停用名单。官方 Python 重载接口为
+`gateway.control_socket.reload_gateway_plugins(profile_home)`；若该 profile 由根网关
+统一服务，则使用 `reload_gateway_plugins(root_home, profile_home=profile_home)`。
+返回 `reloaded: true` 才能记为成功；无返回时先检查对应网关是否运行。
+工具和提示词的更新可能要到 Hermes 新会话才生效，不能仅据安装成功判断。
+
+可直接使用前面填写的路径运行重载。下面的命令先尝试 profile，再尝试服务该 profile
+的根网关；没有成功应答时以非零状态退出。它不发起模型调用或工程。
+
+macOS：
+
+```sh
+"$HERMES_PYTHON" -X utf8 -c "import sys; from pathlib import Path; sys.path.insert(0, sys.argv[1]); import hermes_bootstrap; from gateway.control_socket import reload_gateway_plugins; from hermes_constants import get_default_hermes_root; home=Path(sys.argv[2]); result=reload_gateway_plugins(home); result=result if result is not None else reload_gateway_plugins(get_default_hermes_root(home=home), profile_home=home); print(result); sys.exit(0 if result and result.get('reloaded') else 1)" "$HERMES_SOURCE" "$HERMES_PROFILE_HOME"
+```
+
+Windows PowerShell：
+
+```powershell
+& $HermesPython -X utf8 -c "import sys; from pathlib import Path; sys.path.insert(0, sys.argv[1]); import hermes_bootstrap; from gateway.control_socket import reload_gateway_plugins; from hermes_constants import get_default_hermes_root; home=Path(sys.argv[2]); result=reload_gateway_plugins(home); result=result if result is not None else reload_gateway_plugins(get_default_hermes_root(home=home), profile_home=home); print(result); sys.exit(0 if result and result.get('reloaded') else 1)" $HermesSource $HermesProfileHome
+```
+
+如没有网关应答，按该 profile 原有部署方式启动或重启网关，再查询核对。
+
+在同一个管理终端进行只读核对。macOS：
+
+```sh
+"$HERMES_PYTHON" -X utf8 "$HERMES_PROFILE_HOME/plugins/hermes-dfsc/dfsc-bridge" --profile-home "$HERMES_PROFILE_HOME" system.capabilities
+"$HERMES_PYTHON" -X utf8 "$HERMES_PROFILE_HOME/plugins/hermes-dfsc/dfsc-bridge" --profile-home "$HERMES_PROFILE_HOME" task.list
+```
+
+Windows PowerShell：
+
+```powershell
+& $HermesPython -X utf8 (Join-Path $HermesProfileHome 'plugins\hermes-dfsc\dfsc-bridge') --profile-home $HermesProfileHome system.capabilities
+& $HermesPython -X utf8 (Join-Path $HermesProfileHome 'plugins\hermes-dfsc\dfsc-bridge') --profile-home $HermesProfileHome task.list
+```
+
+确认返回的 `agentId`、根目录和任务归属正确。跨角色查询应被拒绝。连接失败时先核对
+宿主接入开关、目录和配对，恢复连接后查询原单；不要另建任务来猜测上次是否执行成功。
+这些查询不会创建工程，也不等于真实飞书闭环验收。
+
+## 升级、停用与卸载
+
+- 更新 DFSC 资源插件：从市场卸载旧资源后重新安装。任务和原生会话不在资源目录内。
+- 更新 companion：保留 profile 与职责配置，用新包重新运行安装器；配置不变时可
+  省略 `--config`，不需要改宿主登记时省略 `--pair`。安装器先备份旧插件和配置，保留
+  `delivery.json`、`.env` 及其他设置，完成后再让 Hermes 重载。
+- 停用整个工程桥：在宿主面板关闭接入，宿主会暂停未结束任务并关闭连接。
+  卸载市场资源本身不会停止正在执行的工程。
+- 停用某个 Hermes companion：运行
+  `hermes -p PROFILE_NAME plugins disable hermes-dfsc`；删除则用
+  `hermes -p PROFILE_NAME plugins remove hermes-dfsc`。两者都要按前述方式重载当前
+  网关，已加载的工具和提示另需新会话确认；不存在 `hermes plugins reload` 命令。
+  撤销单个智能体的宿主权限由可信管理通道调整智能体登记，保留其他身份。
+- 当前 `install_profile.py` 提供安装与配对，没有 `--uninstall` / `--unpair`。
+  完整移除时分别处理市场资源、Hermes 插件和宿主登记，保留需要的历史及备份。
+  不要删除整个 profile、专配任务账本或普通 DFSC 的数据来代替卸载。
+
+回退 companion 时，在停止或重载对应插件的维护窗口恢复该次安装报告的插件与配置
+备份；若更改过宿主登记，还需由管理员核对身份和范围。回退不会撤销已执行的工程。
+
+## 校验与验收记录
+
+本仓库当前文件以 Git 提交记录为准。原交付 ZIP 的哈希及提取来源见 `ORIGIN.md`；旧 ZIP 的 `PACKAGE.json` 不对应迁仓后文档，因此不原样沿用。该插件仓库不包含原宿主打包脚本。
+
+2026-10-28 的宿主双端 CI 已通过本地市场发现、安装、技能/命令加载、卸载及重装，
+以及原生派工、审批、接管与恢复检查。CI 使用隔离测试环境；真实飞书新委托、真实
+Windows 用户环境安装和连续过夜工程须另行记录。宿主验证提交及来源见 `ORIGIN.md`；本仓库未迁入宿主源码、安装器或宿主验收文档。

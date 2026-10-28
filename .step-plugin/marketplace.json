@@ -1,0 +1,10 @@
+{
+  "name": "hermes-local",
+  "plugins": [
+    {
+      "name": "hermes-engineering-bridge",
+      "source": "./plugins/hermes-engineering-bridge",
+      "description": "Hermes 工程桥：安装配对指引与工程验收协作资源。需要 DFSC Hermes 0.6 宿主及 Hermes companion。"
+    }
+  ]
+}

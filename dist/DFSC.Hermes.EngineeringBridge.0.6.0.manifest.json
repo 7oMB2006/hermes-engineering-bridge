@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "hostVersion": "0.6.0",
+  "bridgeProtocol": 1,
+  "resourcePluginVersion": "0.1.0",
+  "sourceCommit": "0a42819e3acf7b429e488e770fca5e8126d873a2",
+  "sourceDirty": false,
+  "containsCredentials": false,
+  "containsRuntime": false,
+  "files": [
+    {
+      "path": ".step-plugin/marketplace.json",
+      "sha256": "948d7fb2f3ec51c576ad7cd957f57c78c21742c9193842a25d0d75924b5acd9c",
+      "bytes": 302
+    },
+    {
+      "path": "INSTALL.txt",
+      "sha256": "e3a634a9543d5ed254c8cb8a0d7f4ab9097d2617797f4ecc4c0edd36786435d5",
+      "bytes": 9748
+    },
+    {
+      "path": "README.md",
+      "sha256": "764dd853444ef5887be37f88cbc9688d70405de9a933c2e3cee6c9712442bd49",
+      "bytes": 1234
+    },
+    {
+      "path": "companion/README.md",
+      "sha256": "a1f193638ad7dbbef1cea5f9b72fcfca69b8b62a3cc09e60d2ac4850ebb2a718",
+      "bytes": 5017
+    },
+    {
+      "path": "companion/__init__.py",
+      "sha256": "debab67dbdacebee7fcd9ca3477fd7d52d3420d7cedbe56d7b2119dd8742a4c5",
+      "bytes": 43334
+    },
+    {
+      "path": "companion/client.py",
+      "sha256": "03e5851acbc5d9c7097a9f091a9f99d337f41a43775b4fb067bd7d03290be9e6",
+      "bytes": 2912
+    },
+    {
+      "path": "companion/configuration.py",
+      "sha256": "c6b4dc0ed18b7ea6134e1235574f704a96355dc570b3f841f39a95bbc29e9a29",
+      "bytes": 4021
+    },
+    {
+      "path": "companion/dfsc-bridge",
+      "sha256": "24def3716282c5ad6f4e4333eead547297145ff3604cbb7b2834b0772be45387",
+      "bytes": 951
+    },
+    {
+      "path": "companion/install_profile.py",
+      "sha256": "8ea045f2cc22c9f5a8e49e22e1f3b4e26aef7aaa0bbe80b01d5dbe824fd3e22f",
+      "bytes": 6307
+    },
+    {
+      "path": "companion/plugin.yaml",
+      "sha256": "0ec7c4ebd0e41465d5af896e6f5cbcf2f24e6f84fdc47d0a37d9b887ba7c4ec2",
+      "bytes": 313
+    },
+    {
+      "path": "companion/scope.py",
+      "sha256": "1a560389a67ba721b7aa8beaa30c091b4b98c8f6ffc56a3f81a7e91e3084d645",
+      "bytes": 3377
+    },
+    {
+      "path": "companion/skills/SKILL.md",
+      "sha256": "501e50ce35958a5427b5478cd4e701fd653c756f749b33a4748a08687a2b9eb9",
+      "bytes": 6393
+    },
+    {
+      "path": "plugins/hermes-engineering-bridge/README.md",
+      "sha256": "5b17686a98fdaf6d78ebb1ad2de20bb17eb910de1e6024358b5d2e928dadabf3",
+      "bytes": 2258
+    },
+    {
+      "path": "plugins/hermes-engineering-bridge/commands/hermes-bridge-help.md",
+      "sha256": "17eb219e53d3caa54fa6b6912b9b1a5cafcf35af1b6b3e99665cc2b71acfc374",
+      "bytes": 1078
+    },
+    {
+      "path": "plugins/hermes-engineering-bridge/icon.png",
+      "sha256": "bac78108f0961cd347a8c8e131e9f2d1832031e6f344c9f966710973d655e0a3",
+      "bytes": 6873
+    },
+    {
+      "path": "plugins/hermes-engineering-bridge/skills/engineering-evidence/SKILL.md",
+      "sha256": "970a8f9b103b28030881364babf46b6663f4102982b236324b3b5f340bdad6e0",
+      "bytes": 1107
+    },
+    {
+      "path": "plugins/hermes-engineering-bridge/step.plugin.json",
+      "sha256": "0ed181c550f8a23583de69b064c6644e377a4b064120bd4e05bc6b4b08a0cacc",
+      "bytes": 358
+    }
+  ],
+  "file": "DFSC.Hermes.EngineeringBridge.0.6.0.zip",
+  "sha256": "4ec8c675aa4039dae26b2dc6a1f5d148c601e2acbf03ab6a4cec74099b037f8b",
+  "bytes": 45550,
+  "fileCount": 18
+}
