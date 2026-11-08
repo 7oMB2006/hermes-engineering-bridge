@@ -6,7 +6,7 @@
 
 | 组件 | 内容与安装位置 |
 | --- | --- |
-| `plugins/hermes-engineering-bridge/` | DFSC 市场资源插件：技能、帮助命令、图标；资源版本 0.1.0 |
+| `plugins/hermes-engineering-bridge/` | DFSC 市场资源插件：入门指南、声明式工作台入口、技能、帮助命令和图标；资源版本 0.2.0 |
 | `companion/` | Hermes 侧插件、配置安装器及说明；companion 0.2 |
 | `ORIGIN.md` | 组件来源、许可与既有验证边界 |
 
@@ -30,6 +30,8 @@ Hermes 必须已经安装，目标 profile 必须已有 `config.yaml`。沿用�
 `hermes-engineering-bridge`。保持本地仓库目录可访问，以便后续从该市场重新安装。
 安装后可看到 `hermes-bridge-help` 命令与 `hermes-engineering-evidence` 技能。
 此步骤不安装 companion，也不会自动配对或派工。
+支持插件桌面入口协议的宿主会在顶栏插件区域提供 Hermes 主视图入口；
+该入口展示随包指南，不查询真实 Bridge 状态。旧宿主仍可在插件详情阅读指南。
 
 ## 3. 配置并安装 Hermes companion
 

@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "authors": [{ "name": "Hermes engineering bridge contributors" }],
+  "maintainers": [{ "name": "7oMB2006" }],
+  "license": "MIT",
+  "categories": ["development"],
+  "keywords": ["Hermes", "工程协作", "飞书", "入门"],
+  "documentation": {
+    "readme": "docs/START.md",
+    "changelog": "CHANGELOG.md"
+  },
+  "desktop": {
+    "title": "Hermes",
+    "surface": "main-view",
+    "symbol": "bot",
+    "icon": { "light": "icon.png" },
+    "defaultPage": "start",
+    "pages": [
+      { "id": "start", "title": "开始使用", "document": "docs/START.md" },
+      { "id": "setup", "title": "连接准备", "document": "docs/SETUP.md" },
+      { "id": "first-task", "title": "第一项任务", "document": "docs/FIRST_TASK.md" },
+      { "id": "troubleshooting", "title": "排查问题", "document": "docs/TROUBLESHOOTING.md" }
+    ]
+  }
+}
