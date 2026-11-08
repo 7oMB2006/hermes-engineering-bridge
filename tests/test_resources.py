@@ -23,7 +23,13 @@ class ResourceTests(unittest.TestCase):
             self.assertTrue((PLUGIN / page['document']).is_file(), page['document'])
             self.assertTrue(page['document'].endswith('.md'))
             self.assertNotIn('..', Path(page['document']).parts)
-        self.assertTrue((PLUGIN / desktop['icon']['light']).is_file())
+        self.assertEqual(manifest['icon'], desktop['icon']['light'])
+        icon = (PLUGIN / desktop['icon']['light']).read_bytes()
+        self.assertLessEqual(len(icon), 128 * 1024)
+        self.assertEqual(icon[:8], b'\x89PNG\r\n\x1a\n')
+        self.assertEqual(icon[12:16], b'IHDR')
+        self.assertEqual(int.from_bytes(icon[16:20], 'big'), 256)
+        self.assertEqual(int.from_bytes(icon[20:24], 'big'), 256)
 
     def test_markdown_links_stay_in_the_resource_package(self):
         for path in PLUGIN.rglob('*.md'):
