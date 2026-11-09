@@ -29,7 +29,8 @@ https://github.com/7oMB2006/hermes-engineering-bridge.git
 Hermes 侧仍须使用已有 Python/Hermes 环境安装 `companion/`，为每个智能体使用独立身份、授权目录和 profile，再通过可信管理入口完成配对与重载。安装、升级、停用及卸载步骤见 [INSTALL.txt](INSTALL.txt)，companion 说明见 [companion/README.md](companion/README.md)。只安装市场资源不会自动连接飞书、创建任务或授予工程权限。
 
 首次使用先读随资源提供的 [开始使用](plugins/hermes-engineering-bridge/docs/START.md)。
-新工作台需要支持 `agent-bridge-v1` 的客户端，默认打开只读连接页。
+新工作台需要支持 `agent-bridge-v1` 的客户端。顶栏图标先展开轻量 Agent 状态面板，
+不切换当前聊天；从「打开完整工作台」进入默认选中的只读连接页。
 用户主动选择本机 profile 后核验身份、授权目录和首批任务摘要；令牌不进入页面。
 这不会给普通 DFSC 补装 Bridge，也不证明 companion 已加载或可以派工。
 不代表所有已发布 DFSC 安装包都支持；

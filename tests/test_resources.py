@@ -88,6 +88,16 @@ class ResourceTests(unittest.TestCase):
             self.assertNotIn(key, manifest)
             self.assertNotIn(key, presentation['desktop'])
 
+    def test_guides_distinguish_quick_status_from_full_workspace(self):
+        for relative in ('README.md', 'docs/START.md', 'commands/hermes-bridge-help.md'):
+            text = (PLUGIN / relative).read_text(encoding='utf-8')
+            self.assertIn('打开完整工作台', text, relative)
+            self.assertIn('不切换当前聊天' if relative != 'docs/START.md' else '不离开当前聊天',
+                          text, relative)
+        start = (PLUGIN / 'docs/START.md').read_text(encoding='utf-8')
+        self.assertIn('最多 5 项任务', start)
+        self.assertIn('不是实时在线状态', start)
+
 
 if __name__ == '__main__':
     unittest.main()
