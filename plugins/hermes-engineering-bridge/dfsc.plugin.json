@@ -12,6 +12,7 @@
   "desktop": {
     "title": "Hermes",
     "surface": "main-view",
+    "connection": { "protocol": "agent-bridge-v1" },
     "symbol": "bot",
     "icon": { "light": "icons/toolbar-light.png", "dark": "icons/toolbar-dark.png" },
     "defaultPage": "start",

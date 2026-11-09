@@ -10,7 +10,7 @@
 
 | 组件 | 版本 | 目录 |
 | --- | --- | --- |
-| DFSC 市场资源插件 | 0.2.0 | `plugins/hermes-engineering-bridge/` |
+| DFSC 市场资源插件 | 0.3.0 | `plugins/hermes-engineering-bridge/` |
 | Hermes companion | 0.2.0 | `companion/` |
 | 配套 DFSC Hermes 宿主 | 0.6.0，Bridge 协议 v1 | 单独安装，本仓库不包含 |
 
@@ -29,7 +29,10 @@ https://github.com/7oMB2006/hermes-engineering-bridge.git
 Hermes 侧仍须使用已有 Python/Hermes 环境安装 `companion/`，为每个智能体使用独立身份、授权目录和 profile，再通过可信管理入口完成配对与重载。安装、升级、停用及卸载步骤见 [INSTALL.txt](INSTALL.txt)，companion 说明见 [companion/README.md](companion/README.md)。只安装市场资源不会自动连接飞书、创建任务或授予工程权限。
 
 首次使用先读随资源提供的 [开始使用](plugins/hermes-engineering-bridge/docs/START.md)。
-新工作台需要支持插件桌面入口协议的宿主，不代表所有已发布 DFSC 安装包都支持；
+新工作台需要支持 `agent-bridge-v1` 的客户端，默认打开只读连接页。
+用户主动选择本机 profile 后核验身份、授权目录和首批任务摘要；令牌不进入页面。
+这不会给普通 DFSC 补装 Bridge，也不证明 companion 已加载或可以派工。
+不代表所有已发布 DFSC 安装包都支持；
 旧宿主仍可从插件详情阅读本地指南。
 
 ## 已验证的离线安装包

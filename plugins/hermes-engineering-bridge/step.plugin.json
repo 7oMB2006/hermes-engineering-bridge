@@ -1,8 +1,8 @@
 {
   "id": "hermes-engineering-bridge",
   "name": "Hermes 工程桥",
-  "version": "0.2.0",
-  "description": "Hermes 工程桥入门工作台、连接准备与工程证据规范。真实派工另需配套宿主和 companion；安装不会自动连接飞书或授予权限。",
+  "version": "0.3.0",
+  "description": "Hermes 工程桥只读连接工作台、安装指南与工程证据规范。需支持连接协议的新客户端；真实派工另需配套宿主和 companion。",
   "icon": "icon.png",
   "skills": [
     "skills"
