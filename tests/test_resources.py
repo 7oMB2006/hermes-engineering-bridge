@@ -23,13 +23,31 @@ class ResourceTests(unittest.TestCase):
             self.assertTrue((PLUGIN / page['document']).is_file(), page['document'])
             self.assertTrue(page['document'].endswith('.md'))
             self.assertNotIn('..', Path(page['document']).parts)
-        self.assertEqual(manifest['icon'], desktop['icon']['light'])
-        icon = (PLUGIN / desktop['icon']['light']).read_bytes()
+        self.assertEqual(manifest['icon'], 'icon.png')
+        icon = (PLUGIN / manifest['icon']).read_bytes()
         self.assertLessEqual(len(icon), 128 * 1024)
         self.assertEqual(icon[:8], b'\x89PNG\r\n\x1a\n')
         self.assertEqual(icon[12:16], b'IHDR')
         self.assertEqual(int.from_bytes(icon[16:20], 'big'), 256)
         self.assertEqual(int.from_bytes(icon[20:24], 'big'), 256)
+
+    def test_toolbar_icons_are_separate_native_17px_theme_variants(self):
+        presentation = json.loads((PLUGIN / 'dfsc.plugin.json').read_text(encoding='utf-8'))
+        icons = presentation['desktop']['icon']
+        self.assertEqual(icons, {
+            'light': 'icons/toolbar-light.png',
+            'dark': 'icons/toolbar-dark.png',
+        })
+        variants = []
+        for path in icons.values():
+            icon = (PLUGIN / path).read_bytes()
+            self.assertLessEqual(len(icon), 128 * 1024)
+            self.assertEqual(icon[:8], b'\x89PNG\r\n\x1a\n')
+            self.assertEqual(icon[12:16], b'IHDR')
+            self.assertEqual(int.from_bytes(icon[16:20], 'big'), 17)
+            self.assertEqual(int.from_bytes(icon[20:24], 'big'), 17)
+            variants.append(icon)
+        self.assertNotEqual(*variants)
 
     def test_markdown_links_stay_in_the_resource_package(self):
         for path in PLUGIN.rglob('*.md'):

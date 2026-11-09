@@ -13,7 +13,7 @@
     "title": "Hermes",
     "surface": "main-view",
     "symbol": "bot",
-    "icon": { "light": "icon.png" },
+    "icon": { "light": "icons/toolbar-light.png", "dark": "icons/toolbar-dark.png" },
     "defaultPage": "start",
     "pages": [
       { "id": "start", "title": "开始使用", "document": "docs/START.md" },
