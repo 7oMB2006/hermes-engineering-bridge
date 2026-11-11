@@ -1,5 +1,18 @@
 # Hermes 工程桥 companion 0.2
 
+## 通用 DFSC 接入
+
+本源码新增显式 `dfsc-external-v1` 适配，使用
+`--desktop-connector HOST_CONFIG` 安装到独立 profile。它不依赖飞书，
+只支持创建、单轮派工、查询和停止，审批仍在 DFSC 本机完成。
+详见 [通用本机接入说明](EXTERNAL.md)。需要确实包含该协议的宿主构建，
+不能仅据 DFSC 版本号或资源安装成功判断支持。当前没有新增发行验收声明。
+
+缺省配置继续使用下文旧 DFSC Hermes 专版，绝不自动切换协议或借用旧凭据。
+旧专版到通用模式的切换需显式 `--replace-connection`，备份与旧投递状态保留。
+
+## 旧专版模式
+
 同一份插件安装到各自的 Hermes profile；名称、任务范围和连接位置由各 profile
 的 `dfsc-bridge/config.json` 指定。原有 `delivery.json`、会话记忆、`.env` 与飞书身份保留。
 本插件运行于 Hermes 生命周期，不作为 Step Code 的 MCP 工具暴露工程调度或人工审批。

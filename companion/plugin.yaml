@@ -2,7 +2,7 @@ name: hermes-dfsc
 label: Hermes 工程桥
 version: 0.2.0
 kind: standalone
-description: Local DFSC shared-session engineering dispatch, human approvals and event wakeups.
+description: Local DFSC bridge for explicitly configured legacy or dfsc-external-v1 profiles; capabilities depend on that protocol. External-mode approvals remain local; remote human approvals and event wakeups are legacy-only.
 author: Local Hermes owner
 provides_tools: [dfsc_engineering]
 provides_hooks: [pre_gateway_dispatch, post_gateway_admission, on_session_start]

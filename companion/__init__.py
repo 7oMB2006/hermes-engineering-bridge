@@ -78,13 +78,17 @@ def compact_snapshot(snapshot):
 
 def register(ctx):
     from hermes_constants import get_hermes_home
-    from dotenv import dotenv_values
     home = get_hermes_home()
     # Explicit profile-local opt-in; accidental global discovery grants no access.
     try:
         configuration = CompanionConfig.load(home)
     except FileNotFoundError:
         return
+    if configuration.protocol == 'dfsc-external-v1':
+        from .external import register as register_external
+        register_external(ctx, configuration)
+        return
+    from dotenv import dotenv_values
     runtime = Integration(ctx, home, dotenv_values(home / '.env'), configuration)
     ctx.on_unload(runtime.stop)
     ctx.register_hook('pre_gateway_dispatch', runtime.inbound)

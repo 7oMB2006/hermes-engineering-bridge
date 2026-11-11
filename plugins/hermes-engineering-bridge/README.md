@@ -1,35 +1,53 @@
-# Hermes 工程桥资源包
+# Hermes x DFSC
 
-这是 DFSC Hermes 0.6 的市场配套插件。它提供 `hermes-engineering-evidence` 技能、`hermes-bridge-help` 命令和插件图标；没有 MCP 调度工具或可执行 entry。
+资源版本 **0.3.0**。让 Hermes 理解委托、核对交付，让 DFSC 在授权目录执行工程，
+保留原生会话、审批和执行证据。
 
-完整闭环需要两个组件：DFSC Hermes 宿主中的 Agent Bridge，以及装入对应 Hermes profile 的 companion。资源包安装不会复制账号、注册飞书或自动启用工程权限。
+## 这次安装得到什么
 
-完整安装说明见仓库根目录 `INSTALL.txt`；安装器位于同层的
-`companion/install_profile.py`，不在本资源插件内部。本仓库 companion 位于根目录
-`companion/`。每个智能体独立配对、独立存储状态；不把 profile 凭据放入本插件。
+本地指南、帮助命令与工程证据规范。支持 `agent-bridge-v1` 及本轮引导的客户端
+还提供连接工作台。DFSC `>=0.6.0` 是版本下限，不证明构建包含协议或 Bridge 服务。
 
-从仓库根目录运行（使用 Hermes 的 Python 环境）：
+顶栏图标先展开状态小面板，不切换当前聊天；再次点击、Escape 或点击外部收起。
+点击「打开完整工作台」，选择目标 Hermes 身份目录（profile），再重新检查。
+完整页按身份目录、companion 配置、Bridge 配对连接、授权目录显示证据及下一步。
+小面板只显示本次核验身份和首批最多 5 项任务，不是实时在线状态。
 
-```
-python -X utf8 companion/install_profile.py --profile-home PROFILE --config companion.json --pair
-```
+## 还要准备什么
 
-参数路径按当前主机填写，使用 Hermes 已配置的 Python；使用独立 Python 时可补
-`--hermes-source HERMES_SOURCE_ROOT`。配置格式见仓库根目录 `INSTALL.txt` 或
-`companion/README.md`。安装器会备份现有插件；安装完成后按 companion 指引重载
-对应 profile。普通市场资源包不能自行调用配对或人工管理能力。
+- 你自己的 Hermes Agent、模型和独立 profile。安装资源与只读检查无需飞书。
+- 本项目维护的 Hermes x DFSC companion 0.2.0，单独安装、启用并重载目标 profile。
+- 实际支持所选协议的 DFSC 宿主，以及独立配对和明确目录授权。
 
-## 兼容
+有两条不同路径：
 
-- DFSC Hermes 0.6.0，Bridge 协议 v1。
-- macOS Apple Silicon、Windows x64。
-- 标准 DFSC 0.6.0 也可以安装本资源包，但没有 Agent Bridge 宿主能力时，安装仅提供文档与技能，不能派工。
+- **新增通用本机模式，源码尚未发布：** 需要明确提供 `dfsc-external-v1` 的构建。
+  在「远程访问 → 外部 Agent」人工打开开关、选择授权项目并创建连接，
+  复制非秘密 `configPath`，用 `--desktop-connector HOST_CONFIG` 安装到独立 profile，
+  再由你启用、重载。此模式不依赖飞书；一任务只派一轮，审批仅在 DFSC 本机完成。
+- **旧 DFSC Hermes 专版：** 保留原配对与逐委托飞书真人授权，
+  旧配置缺省不切换。只有旧路径使用 `--pair` 和既有预算、事件及审批回调。
 
-## 升级与卸载
+两种模式都不能仅凭版本号判断支持，不能混用凭据或因为连接失败自动降级。
+通用模式配对允许本机进程派工，不验证后续聊天是否来自真人；
+没有旧专版的预算、事件唤醒或验收 API。`completed` 不等于测试或验收通过。
 
-市场管理沿用 DFSC 的原生安装/卸载操作。先查看版本与来源；更新资源包时卸载旧包再安装新包，宿主任务/原生会话和 Hermes profile 数据不在此插件目录内。运行中的会话可能保留已加载技能，配置变化遵循原生会话生命周期。
+companion 不是 Hermes 官方提供的桥。市场资源不包含 Hermes/Python 环境、
+companion 安装器、宿主应用安装器、MCP 调度服务或可执行前端脚本。
+配套代码及管理说明在 [项目仓库](https://github.com/7oMB2006/hermes-engineering-bridge)
+的 `companion/`、`INSTALL.txt`；新增通用路径详见源码的 `companion/EXTERNAL.md`。
+尚未取得对应构建时，先确认宿主实际支持，不把历史资源 ZIP 当宿主安装器。
 
-停用整个工程桥请在 DFSC 面板关闭接入；卸载资源包不会自动停止正在执行的工程，
-也不会撤销 Hermes companion。Hermes 侧通过其插件管理独立停用或卸载；单个智能体
-的宿主权限由可信管理通道调整登记。当前 companion 安装器仅提供安装与配对，
-没有卸载或解除配对参数。完整流程见仓库根目录 `INSTALL.txt`。
+## 下一步
+
+- [开始使用](docs/START.md)：安装得到什么，接下来做什么。
+- [连接准备](docs/SETUP.md)：四项检查分别说明什么，缺项如何处理。
+- [第一项任务](docs/FIRST_TASK.md)：由你发起空目录练习，核对真实交付。
+- [排查问题](docs/TROUBLESHOOTING.md)：入口、连接、任务和移除。
+- [更新记录](CHANGELOG.md)。
+
+检查不会自动安装、配对、授权或派工；目录通过不证明 Hermes 正在运行，
+配置通过不证明 companion 已加载，只读连接通过不证明可以派工。
+`hermes-bridge-help` 只提供帮助，`hermes-engineering-evidence` 规范工程证据。
+更新市场后还需更新已安装副本；资源更新后需重新选择 profile。
+卸载资源不会停止工程，也不会撤销 companion 或宿主权限。

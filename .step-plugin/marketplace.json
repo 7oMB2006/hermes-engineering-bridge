@@ -4,7 +4,7 @@
     {
       "name": "hermes-engineering-bridge",
       "source": "./plugins/hermes-engineering-bridge",
-      "description": "Hermes 工程桥：安装配对指引与工程验收协作资源。需要 DFSC Hermes 0.6 宿主及 Hermes companion。"
+      "description": "Hermes x DFSC：准备检查、安装配对指引与工程协作资源。实际派工另需配套 Agent Bridge 宿主及 Hermes companion。"
     }
   ]
 }

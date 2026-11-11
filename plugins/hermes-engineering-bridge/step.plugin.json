@@ -1,8 +1,8 @@
 {
   "id": "hermes-engineering-bridge",
-  "name": "Hermes 工程桥",
-  "version": "0.1.0",
-  "description": "配合 DFSC Hermes 0.6 与 Hermes companion 使用，提供协作说明和工程证据规范。安装此资源包不会自动连接飞书或创建任务。",
+  "name": "Hermes x DFSC",
+  "version": "0.3.0",
+  "description": "Hermes x DFSC 安装引导、只读连接检查与工程证据规范。需支持连接协议及引导的新客户端；真实派工另需 Hermes、companion 和配套 Bridge 宿主。",
   "icon": "icon.png",
   "skills": [
     "skills"
