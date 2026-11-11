@@ -3,6 +3,7 @@ import hashlib
 from pathlib import Path
 import re
 import unittest
+from urllib.parse import urlparse
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,9 +16,15 @@ class ResourceTests(unittest.TestCase):
         presentation = json.loads((PLUGIN / 'dfsc.plugin.json').read_text(encoding='utf-8'))
         self.assertEqual(manifest['version'], '0.3.0')
         self.assertEqual(presentation['schemaVersion'], 1)
+        self.assertEqual(manifest['name'], 'Hermes x DFSC')
         desktop = presentation['desktop']
+        self.assertEqual(desktop['title'], 'Hermes x DFSC')
         self.assertEqual(desktop['surface'], 'main-view')
-        self.assertEqual(desktop['connection'], {'protocol': 'agent-bridge-v1'})
+        self.assertEqual(desktop['connection'], {
+            'protocol': 'agent-bridge-v1',
+            'guides': {'setup': 'setup', 'firstTask': 'first-task',
+                       'troubleshooting': 'troubleshooting'},
+        })
         self.assertEqual(desktop['defaultPage'], 'start')
         self.assertEqual([page['id'] for page in desktop['pages']],
                          ['start', 'setup', 'first-task', 'troubleshooting'])
@@ -25,6 +32,8 @@ class ResourceTests(unittest.TestCase):
             self.assertTrue((PLUGIN / page['document']).is_file(), page['document'])
             self.assertTrue(page['document'].endswith('.md'))
             self.assertNotIn('..', Path(page['document']).parts)
+        self.assertTrue(set(desktop['connection']['guides'].values())
+                        <= {page['id'] for page in desktop['pages']})
         self.assertEqual(manifest['icon'], 'icon.png')
         icon = (PLUGIN / manifest['icon']).read_bytes()
         self.assertLessEqual(len(icon), 128 * 1024)
@@ -77,9 +86,60 @@ class ResourceTests(unittest.TestCase):
         self.assertIn('不证明 companion 已加载', start)
         self.assertIn('不内置 Agent Bridge 服务', setup)
         self.assertIn('首批 50 条', setup)
-        self.assertIn('当前需要访问权限', setup)
+        self.assertIn('本仓库不提供宿主应用安装器', setup)
+        self.assertIn('本项目维护', setup)
+        self.assertIn('不是 Hermes 官方组件', setup)
+        self.assertIn('此项只验证目录和标记文件', setup)
+        self.assertIn('配置有效不证明 companion 已启用或加载', setup)
+        self.assertIn('页面不接收令牌', setup)
         self.assertIn('可能产生对应服务费用', task)
         self.assertIn('打开本页本身不会开始执行', task)
+        for name in ('START', 'SETUP', 'FIRST_TASK', 'TROUBLESHOOTING'):
+            text = (PLUGIN / f'docs/{name}.md').read_text(encoding='utf-8')
+            self.assertNotIn('当前需要访问权限', text, name)
+            self.assertNotIn('配套项目当前需要访问权限', text, name)
+
+    def test_requirements_are_declared_without_installing_or_making_feishu_required(self):
+        presentation = json.loads((PLUGIN / 'dfsc.plugin.json').read_text(encoding='utf-8'))
+        requirements = presentation['requirements']
+        self.assertEqual(set(requirements), {'dfsc', 'external'})
+        self.assertEqual(requirements['dfsc'], '>=0.6.0')
+        external = requirements['external']
+        self.assertEqual([item['name'] for item in external], [
+            'Hermes Agent', 'Hermes x DFSC companion', 'DFSC Agent Bridge 配套宿主',
+            '飞书工程授权通道',
+        ])
+        for index, item in enumerate(external):
+            self.assertTrue(set(item) <= {'name', 'description', 'url', 'optional'})
+            self.assertEqual(item.get('optional', False), index == 3)
+            parsed = urlparse(item['url'])
+            self.assertEqual(parsed.scheme, 'https')
+            self.assertIn(parsed.netloc, ('github.com', 'open.feishu.cn'))
+            self.assertIsNone(parsed.username)
+            self.assertIsNone(parsed.password)
+            self.assertFalse(parsed.query)
+            self.assertFalse(parsed.fragment)
+        self.assertIn('版本号达标不证明', external[2]['description'])
+        self.assertIn('安装资源与只读检查无需飞书', external[0]['description'])
+        self.assertIn('新工程授权仍需已配置的飞书通道', external[0]['description'])
+        self.assertIn('发起新工程委托的授权入口', external[3]['description'])
+        self.assertIn('安装与只读查看不需要', external[3]['description'])
+        task = (PLUGIN / 'docs/FIRST_TASK.md').read_text(encoding='utf-8')
+        self.assertIn('安装资源与只读检查无需飞书', task)
+        self.assertIn('只从已核验的飞书主人消息', task)
+        self.assertIn('不是所有渠道的通用能力', task)
+
+    def test_onboarding_matches_the_four_evidence_cards(self):
+        for relative in ('README.md', 'docs/START.md', 'docs/SETUP.md',
+                         'commands/hermes-bridge-help.md'):
+            text = (PLUGIN / relative).read_text(encoding='utf-8')
+            for label in ('身份目录', 'companion 配置', 'Bridge 配对', '授权目录'):
+                self.assertIn(label, text, (relative, label))
+        start = (PLUGIN / 'docs/START.md').read_text(encoding='utf-8')
+        self.assertIn('不证明 Hermes 正在运行', start)
+        self.assertIn('不证明 companion 已加载', start)
+        self.assertIn('只证明本次身份、目录和摘要查询成功', start)
+        self.assertIn('不证明可以派工', start)
 
     def test_entry_does_not_add_an_executable_resource(self):
         manifest = json.loads((PLUGIN / 'step.plugin.json').read_text(encoding='utf-8'))
@@ -97,6 +157,35 @@ class ResourceTests(unittest.TestCase):
         start = (PLUGIN / 'docs/START.md').read_text(encoding='utf-8')
         self.assertIn('最多 5 项任务', start)
         self.assertIn('不是实时在线状态', start)
+
+    def test_guides_explicitly_separate_unreleased_generic_and_legacy_modes(self):
+        for relative in ('README.md', 'docs/START.md', 'docs/SETUP.md', 'docs/FIRST_TASK.md',
+                         'docs/TROUBLESHOOTING.md', 'commands/hermes-bridge-help.md'):
+            text = (PLUGIN / relative).read_text(encoding='utf-8')
+            with self.subTest(relative=relative):
+                self.assertIn('dfsc-external-v1', text)
+                self.assertIn('尚未发布', text)
+                self.assertIn('外部 Agent', text)
+                self.assertIn('--desktop-connector', text)
+                self.assertIn('独立 profile', text)
+                self.assertIn('旧', text)
+                self.assertIn('本机', text)
+                self.assertIn('completed', text)
+                self.assertNotIn('普通 DFSC 主线目前不内置配套 Bridge 服务', text)
+        setup = (PLUGIN / 'docs/SETUP.md').read_text(encoding='utf-8')
+        self.assertIn('不加 `--pair`', setup)
+        self.assertIn('不手写 token', setup)
+        self.assertIn('不会自动重启网关', setup)
+        self.assertIn('--replace-connection', setup)
+        self.assertIn('通用宿主当前每页最多 20 项', setup)
+        self.assertIn('没有开放翻页参数', setup)
+        requirements = json.loads((PLUGIN / 'dfsc.plugin.json').read_text(encoding='utf-8'))['requirements']['external']
+        self.assertIn('仅旧专版模式', requirements[0]['description'])
+        self.assertIn('新增通用模式不依赖飞书', requirements[0]['description'])
+        self.assertIn('dfsc-external-v1', requirements[2]['description'])
+        self.assertIn('尚未发布', requirements[2]['description'])
+        self.assertIn('仅旧专版模式', requirements[3]['description'])
+        self.assertTrue(requirements[3]['optional'])
 
 
 if __name__ == '__main__':

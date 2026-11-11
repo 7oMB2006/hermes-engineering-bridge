@@ -32,6 +32,7 @@ class CompanionConfig:
     workspace_roots: tuple[Path, ...] = ()
     role_instructions: str = ''
     title_prefix: bool = True
+    protocol: str | None = None
 
     @property
     def credentials(self):
@@ -53,9 +54,12 @@ class CompanionConfig:
         return owner == self.agent_id
 
     def to_dict(self):
-        return {'schemaVersion': 1, 'agentId': self.agent_id, 'displayName': self.display_name,
-                'bridgeRoot': str(self.bridge_root), 'workspaceRoots': [str(p) for p in self.workspace_roots],
-                'roleInstructions': self.role_instructions, 'titlePrefix': self.title_prefix}
+        result = {'schemaVersion': 1, 'agentId': self.agent_id, 'displayName': self.display_name,
+                  'bridgeRoot': str(self.bridge_root), 'workspaceRoots': [str(p) for p in self.workspace_roots],
+                  'roleInstructions': self.role_instructions, 'titlePrefix': self.title_prefix}
+        if self.protocol is not None:
+            result['protocol'] = self.protocol
+        return result
 
     @classmethod
     def from_dict(cls, value):
@@ -76,8 +80,13 @@ class CompanionConfig:
         prefix = value.get('titlePrefix', True)
         if type(prefix) is not bool:
             raise ValueError('Invalid titlePrefix')
+        protocol = value.get('protocol')
+        if protocol is not None and protocol != 'dfsc-external-v1':
+            raise ValueError('Unsupported companion protocol')
+        if protocol is not None and ('bridgeRoot' not in value or not roots):
+            raise ValueError('External connector requires an explicit bridgeRoot and workspaceRoots')
         return cls(ident, display.strip(), absolute_path(value['bridgeRoot'] if 'bridgeRoot' in value else str(default_bridge_root()), 'bridgeRoot'),
-                   tuple(dict.fromkeys(absolute_path(root, 'workspaceRoots') for root in roots)), role, prefix)
+                   tuple(dict.fromkeys(absolute_path(root, 'workspaceRoots') for root in roots)), role, prefix, protocol)
 
     @classmethod
     def load(cls, profile_home):

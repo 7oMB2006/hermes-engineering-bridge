@@ -10,13 +10,17 @@ import tempfile
 try:
     from .configuration import CompanionConfig
     from .client import call
+    from .external import load_connector
 except ImportError:
     from configuration import CompanionConfig
     from client import call
+    from external import load_connector
 
 
 def pair(configuration):
     # This management-only command is deliberately separate from dfsc-bridge.
+    if configuration.protocol is not None:
+        raise ValueError('External connectors must be paired in DFSC, not with human credentials')
     current = call(configuration.bridge_root, 'human.agents', human=True)
     agents = current['agents']
     roots = [str(root) for root in configuration.workspace_roots]
@@ -32,11 +36,23 @@ def pair(configuration):
     return call(configuration.bridge_root, 'human.agents', payload, human=True)
 
 
-def install(home, configuration, *, source=None, pair_with_host=False):
+def install(home, configuration, *, source=None, pair_with_host=False, replace_connection=False):
     import hermes_yaml as yaml
+    if configuration.protocol is not None and pair_with_host:
+        raise ValueError('--pair is unavailable for an external connector')
     home = Path(home).resolve()
     if not (home / 'config.yaml').is_file():
         raise ValueError('An existing Hermes profile with config.yaml is required')
+    profile_config = home / 'dfsc-bridge/config.json'
+    if profile_config.exists():
+        try:
+            previous = CompanionConfig.load(home)
+            previous_connection = (previous.protocol, previous.agent_id, previous.bridge_root, previous.workspace_roots)
+        except (ValueError, KeyError, TypeError):
+            previous_connection = None
+        next_connection = (configuration.protocol, configuration.agent_id, configuration.bridge_root, configuration.workspace_roots)
+        if previous_connection != next_connection and not replace_connection:
+            raise ValueError('Existing connection differs; back up and explicitly use --replace-connection to switch')
     source = Path(source or __file__).resolve()
     if source.is_file():
         source = source.parent
@@ -47,7 +63,6 @@ def install(home, configuration, *, source=None, pair_with_host=False):
     shutil.copy2(settings_path, backup / 'config.yaml')
     data = home / 'dfsc-bridge'
     data.mkdir(mode=0o700, exist_ok=True)
-    profile_config = data / 'config.json'
     if profile_config.exists():
         shutil.copy2(profile_config, backup / 'companion-config.json')
     target = home / 'plugins/hermes-dfsc'
@@ -58,20 +73,21 @@ def install(home, configuration, *, source=None, pair_with_host=False):
     for toolset in ['dfsc', 'skills']:
         if toolset not in settings.setdefault('toolsets', []):
             settings['toolsets'].append(toolset)
-        for platform in ['cli', 'feishu']:
+        for platform in (['cli', 'feishu'] if configuration.protocol is None else ['cli']):
             if toolset not in settings.setdefault('platform_toolsets', {}).setdefault(platform, []):
                 settings['platform_toolsets'][platform].append(toolset)
     plugins = settings.setdefault('plugins', {})
     if 'hermes-dfsc' not in plugins.setdefault('enabled', []):
         plugins['enabled'].append('hermes-dfsc')
-    plugins.setdefault('entries', {}).setdefault('hermes-dfsc', {})['allow_gateway_injection'] = True
+    plugins.setdefault('entries', {}).setdefault('hermes-dfsc', {})['allow_gateway_injection'] = configuration.protocol is None
     # Check local configuration before modifying the host's active registrations.
     settings_text = yaml.safe_dump(settings, allow_unicode=True, sort_keys=False)
     config_text = json.dumps(configuration.to_dict(), ensure_ascii=False, indent=2) + '\n'
     with tempfile.TemporaryDirectory(prefix='.dfsc-install-', dir=target.parent) as temporary:
         staged = Path(temporary) / 'plugin'
         shutil.copytree(source, staged, ignore=shutil.ignore_patterns('__pycache__', '*.pyc', 'test_*.py', 'install_profile.py', 'README.md'))
-        for required in ['__init__.py', 'configuration.py', 'scope.py', 'client.py', 'plugin.yaml', 'dfsc-bridge', 'skills/SKILL.md']:
+        for required in ['__init__.py', 'configuration.py', 'scope.py', 'client.py', 'external.py',
+                         'plugin.yaml', 'dfsc-bridge', 'skills/SKILL.md', 'skills/external/SKILL.md']:
             if not (staged / required).is_file():
                 raise ValueError('Incomplete companion source: ' + required)
         # Stage everything before changing either registration or installed code.
@@ -102,21 +118,33 @@ def install(home, configuration, *, source=None, pair_with_host=False):
                 profile_config.unlink()
             raise RuntimeError('Companion files restored after installation failure; host pairing may already be registered. Backup: ' + str(backup)) from None
     return {'profile': str(home), 'agentId': configuration.agent_id, 'backup': str(backup),
-            'paired': pair_with_host, 'reloadRequired': True}
+            'paired': pair_with_host, 'reloadRequired': True,
+            'protocol': configuration.protocol or 'legacy-hermes-bridge'}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--profile-home', required=True, type=Path)
-    parser.add_argument('--config', type=Path, help='Non-secret companion JSON; required for first installation')
+    configurations = parser.add_mutually_exclusive_group()
+    configurations.add_argument('--config', type=Path, help='Non-secret companion JSON; required for first installation')
+    configurations.add_argument('--desktop-connector', type=Path, help='Non-secret dfsc-external-v1 config exported by DFSC')
     parser.add_argument('--hermes-source', type=Path, help='Hermes source root when hermes_yaml is not installed in this Python environment')
     parser.add_argument('--pair', action='store_true', help='Use the DFSC trusted-human credential to register this agent and current roots')
+    parser.add_argument('--replace-connection', action='store_true', help='Explicitly switch an existing profile connection after creating a backup')
     args = parser.parse_args()
+    if args.desktop_connector and args.pair:
+        parser.error('--desktop-connector cannot be combined with --pair')
     if args.hermes_source:
-        sys.path.insert(0, str(args.hermes_source.resolve()))
-        import hermes_bootstrap
-    configuration = CompanionConfig.from_dict(json.loads(args.config.read_text(encoding='utf-8'))) if args.config else CompanionConfig.load(args.profile_home)
-    print(json.dumps(install(args.profile_home, configuration, pair_with_host=args.pair), ensure_ascii=False))
+        source = args.hermes_source.resolve()
+        sys.path.insert(0, str(source))
+        from pm.environments import activate_dependencies
+        activate_dependencies(source)
+    if args.desktop_connector:
+        configuration = load_connector(args.desktop_connector)
+    else:
+        configuration = CompanionConfig.from_dict(json.loads(args.config.read_text(encoding='utf-8'))) if args.config else CompanionConfig.load(args.profile_home)
+    print(json.dumps(install(args.profile_home, configuration, pair_with_host=args.pair,
+                             replace_connection=args.replace_connection), ensure_ascii=False))
 
 
 if __name__ == '__main__':

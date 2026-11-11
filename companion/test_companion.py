@@ -2,6 +2,7 @@ import importlib
 import json
 from pathlib import Path
 import socket
+import subprocess
 import sys
 import tempfile
 import threading
@@ -169,6 +170,51 @@ class CompanionTests(unittest.TestCase):
         self.assertEqual(settings['model'], 'existing')
         self.assertEqual(settings['plugins']['enabled'], ['other', 'hermes-dfsc'])
         self.assertEqual(configuration.CompanionConfig.load(self.root), self.config)
+
+    def test_source_cli_activates_dependencies_without_launching_hermes(self):
+        source = self.root / 'hermes-source'
+        package = source / 'pm'
+        package.mkdir(parents=True)
+        (package / '__init__.py').write_text('', encoding='utf-8')
+        (package / 'environments.py').write_text(
+            'from pathlib import Path\n'
+            'import sys\n'
+            'def activate_dependencies(root):\n'
+            '    assert root == Path(__file__).resolve().parents[1]\n'
+            '    (root / "activated.txt").write_text(str(root), encoding="utf-8")\n'
+            '    sys.path.insert(0, str(root / "dependencies"))\n',
+            encoding='utf-8')
+        (source / 'hermes_bootstrap.py').write_text(
+            'raise AssertionError("Installer must not launch Hermes bootstrap")\n',
+            encoding='utf-8')
+        dependencies = source / 'dependencies'
+        dependencies.mkdir()
+        (dependencies / 'hermes_yaml.py').write_text(
+            'import json\n'
+            'safe_load = json.loads\n'
+            'def safe_dump(value, **kwargs):\n'
+            '    return json.dumps(value)\n',
+            encoding='utf-8')
+        home = self.root / 'profile'
+        home.mkdir()
+        (home / 'config.yaml').write_text('{"model":"existing"}', encoding='utf-8')
+        connector = self.root / 'connector.json'
+        connector.write_text(json.dumps({
+            'schemaVersion': 1, 'protocol': 'dfsc-external-v1',
+            'agentId': self.config.agent_id, 'displayName': self.config.display_name,
+            'bridgeRoot': str(self.root), 'workspaceRoots': [str(self.project)],
+        }), encoding='utf-8')
+        result = subprocess.run([
+            sys.executable, '-X', 'utf8', '-B', str(Path(__file__).parent / 'install_profile.py'),
+            '--profile-home', str(home), '--desktop-connector', str(connector),
+            '--hermes-source', str(source),
+        ], capture_output=True, text=True, encoding='utf-8', timeout=15)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, '')
+        self.assertEqual((source / 'activated.txt').read_text(encoding='utf-8'), str(source))
+        self.assertEqual(json.loads(result.stdout)['protocol'], 'dfsc-external-v1')
+        self.assertEqual(json.loads((home / 'config.yaml').read_text(encoding='utf-8'))['model'], 'existing')
+        self.assertEqual(configuration.CompanionConfig.load(home).protocol, 'dfsc-external-v1')
 
 
 class TransportTests(unittest.TestCase):

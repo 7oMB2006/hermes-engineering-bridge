@@ -6,14 +6,22 @@ import os
 from pathlib import Path
 from configuration import CompanionConfig
 from scope import ScopedBridge
+from external import METHODS, call as external_call
 
 p = argparse.ArgumentParser()
-p.add_argument('method', choices=['session.archiveStatus', 'session.archive', 'session.restore', 'system.capabilities', 'task.list', 'task.get', 'session.snapshot', 'run.submit', 'task.accept', 'task.pause', 'task.stop'])
+legacy_methods = ['session.archiveStatus', 'session.archive', 'session.restore', 'system.capabilities', 'task.list', 'task.get', 'session.snapshot', 'run.submit', 'task.accept', 'task.pause', 'task.stop']
+p.add_argument('method', choices=list(dict.fromkeys(legacy_methods + list(METHODS))))
 p.add_argument('--profile-home', type=Path, default=Path(os.environ['HERMES_HOME']) if os.environ.get('HERMES_HOME') else Path(__file__).resolve().parents[2])
 p.add_argument('--json', default='{}', dest='payload')
 a = p.parse_args()
 try:
     c = CompanionConfig.load(a.profile_home)
-    print(json.dumps(ScopedBridge(c).call(c.credentials, a.method, json.loads(a.payload)), ensure_ascii=False))
+    if c.protocol == 'dfsc-external-v1':
+        result = external_call(c, a.method, json.loads(a.payload))
+    else:
+        if a.method not in legacy_methods:
+            raise ValueError('Unsupported legacy diagnostic method')
+        result = ScopedBridge(c).call(c.credentials, a.method, json.loads(a.payload))
+    print(json.dumps(result, ensure_ascii=False))
 except Exception as exc:
     p.exit(1, str(exc) + '\n')

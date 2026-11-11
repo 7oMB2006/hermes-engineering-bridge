@@ -1,26 +1,44 @@
-# Hermes 工程桥插件包安装说明
+# Hermes x DFSC 插件包安装说明
 
-本仓库适用于 macOS Apple Silicon 和 Windows x64。克隆或解压仓库后，下面命令均从仓库根目录运行；安装市场时选择包含 `.step-plugin/marketplace.json` 的这一层目录。私有仓库的 Git 安装需要当前 Git 已配置主人账号的认证，也可使用本地目录安装。
+## 新增通用宿主路径
+
+若手中的 DFSC 构建明确提供 `dfsc-external-v1`，可在「远程访问 → 外部 Agent」
+人工启用接入、选择项目并创建连接，再用
+`python -X utf8 -B companion/install_profile.py --profile-home PROFILE --desktop-connector HOST_CONFIG`
+安装最小适配。此路径不依赖飞书，不使用 `--pair`，审批只在 DFSC 本机处理。
+完整说明和首次任务见 `companion/EXTERNAL.md`。旧配置缺省保持旧模式；
+切换已有连接必须显式确认并备份，不会因为连接失败自动降级。
+
+这是源码新增路径，不表示市场资源、发行安装器或真实 Hermes gateway 已完成验收。
+只有版本号达标仍不足以确认支持。以下原有步骤描述旧 DFSC Hermes 专版，
+不要混用两套配对和能力说明。
+
+本仓库适用于 macOS Apple Silicon 和 Windows x64。克隆或解压仓库后，下面命令均从仓库根目录运行；安装市场时选择包含 `.step-plugin/marketplace.json` 的这一层目录。仓库公开，可通过 Git 或本地目录安装资源，不需要把 token 填入市场地址。
 
 ## 包含什么
 
 | 组件 | 内容与安装位置 |
 | --- | --- |
 | `plugins/hermes-engineering-bridge/` | DFSC 市场资源插件：只读连接页声明、指南、技能、帮助命令和图标；资源版本 0.3.0 |
-| `companion/` | Hermes 侧插件、配置安装器及说明；companion 0.2 |
+| `companion/` | 本项目维护的 Hermes 侧桥接插件、配置安装器及说明；companion 0.2，不是 Hermes 官方桥 |
 | `ORIGIN.md` | 组件来源、许可与既有验证边界 |
 
 0.6.0 是配套宿主版本。完整派工需要 **DFSC Hermes 0.6.0 宿主内置
 Agent Bridge＋Hermes companion＋独立配对**。普通 DFSC 安装资源插件后只能加载
 资源。仓库不含宿主安装器、Python/Hermes 环境、账号、连接凭据、会话或任务账本。
+资源声明 DFSC `>=0.6.0`，但版本号达标不证明构建包含连接协议、本轮引导或 Bridge 服务。
+历史 `dist/` ZIP 也不是宿主应用安装器。首次使用可先阅读资源中的 `docs/START.md`。
 
 ## 1. 准备宿主与 Hermes
 
-安装对应系统的 DFSC Hermes 私版宿主，打开工程面板，启用接入并授权实际工程根目录。
+先向维护者确认并取得对应系统、实际包含 Agent Bridge 的配套宿主；
+本仓库没有宿主应用下载或一键安装入口。打开配套宿主的工程面板，启用接入并授权实际工程根目录。
 普通 DFSC 与专配使用各自的应用和数据目录。现有工程应先暂停或结束，再进行宿主切换。
 
 Hermes 必须已经安装，目标 profile 必须已有 `config.yaml`。沿用它的 Python 环境、
-模型和飞书设置。安装器需要 `hermes_yaml`；任意系统 Python 不一定具备 Hermes 依赖。
+模型和既有消息渠道设置。安装资源与只读检查无需飞书；当前 companion 0.2.0 的
+新工程授权和回调仍需已配置、核验过的飞书通道，不承诺其他聊天入口也能派工。
+安装器需要 `hermes_yaml`；任意系统 Python 不一定具备 Hermes 依赖。
 下文的 Python 和源码路径填写为当前 Hermes 安装实际使用的位置，源码根目录需包含
 `hermes_bootstrap.py`。无需克隆 DFSC 源码仓库，也无需向插件包复制 `.env` 或凭据。
 
@@ -30,10 +48,15 @@ Hermes 必须已经安装，目标 profile 必须已有 `config.yaml`。沿用�
 `hermes-engineering-bridge`。保持本地仓库目录可访问，以便后续从该市场重新安装。
 安装后可看到 `hermes-bridge-help` 命令与 `hermes-engineering-evidence` 技能。
 此步骤不安装 companion，也不会自动配对或派工。
-支持 `agent-bridge-v1` 的新客户端会在顶栏插件区域提供 Hermes 主视图入口。
-用户主动选择本机 profile 后，宿主读取对应身份的 model.json 并进行只读连接核验；
+支持 `agent-bridge-v1` 及本轮引导的新客户端，顶栏 Hermes x DFSC 图标先开状态小面板，
+不切换当前聊天；点击「打开完整工作台」进入连接页。
+用户主动选择本机 profile 后，按身份目录、companion 配置、Bridge 配对连接和授权目录
+查看本次检查证据与下一步。宿主读取对应身份的 model.json 并进行只读连接核验；
 面板只显示脱敏后的身份、可见目录和首批任务摘要，不提供配对、授权或任务控制。
-当前桌面主线不内置 Agent Bridge 服务，连接核验不证明 companion 已加载或可以派工。
+不包含新通用接入的普通构建不会因安装资源而获得 Agent Bridge 服务；
+连接核验不证明 companion 已加载或可以派工。
+目录标记有效也不证明 Hermes 正在运行，配置有效不证明 companion 已启用。
+检查不会自动安装、配对、授权或启动服务。完成以下管理步骤后再回页面重新检查。
 旧宿主仍可在插件详情阅读指南。
 
 ## 3. 配置并安装 Hermes companion
@@ -132,7 +155,8 @@ Windows PowerShell：
 
 ## 升级、停用与卸载
 
-- 更新 DFSC 资源插件：从市场卸载旧资源后重新安装。任务和原生会话不在资源目录内。
+- 更新 DFSC 资源插件：优先在插件市场检查并安装更新；旧宿主没有更新入口时，再卸载
+  旧资源后重新安装。任务和原生会话不在资源目录内。
 - 更新 companion：保留 profile 与职责配置，用新包重新运行安装器；配置不变时可
   省略 `--config`，不需要改宿主登记时省略 `--pair`。安装器先备份旧插件和配置，保留
   `delivery.json`、`.env` 及其他设置，完成后再让 Hermes 重载。

@@ -5,14 +5,47 @@
   "license": "MIT",
   "categories": ["development"],
   "keywords": ["Hermes", "工程协作", "飞书", "入门"],
+  "requirements": {
+    "dfsc": ">=0.6.0",
+    "external": [
+      {
+        "name": "Hermes Agent",
+        "description": "需要已有模型配置和独立 profile 的 Hermes 环境。安装资源与只读检查无需飞书；仅旧专版模式的新工程授权仍需已配置的飞书通道，新增通用模式不依赖飞书。",
+        "url": "https://github.com/NousResearch/hermes-agent"
+      },
+      {
+        "name": "Hermes x DFSC companion",
+        "description": "本项目维护的 Hermes 侧桥接插件，版本标识为 0.2.0；源码新增显式通用协议适配，尚未发布。需在独立 profile 安装并由用户启用、重载。",
+        "url": "https://github.com/7oMB2006/hermes-engineering-bridge"
+      },
+      {
+        "name": "DFSC Agent Bridge 配套宿主",
+        "description": "需要实际支持所选协议的构建：新增 dfsc-external-v1 源码路径尚未发布，或既有 DFSC Hermes 专版。DFSC 版本号达标不证明可用，均需独立配对与目录授权。",
+        "url": "https://github.com/7oMB2006/hermes-engineering-bridge"
+      },
+      {
+        "name": "飞书工程授权通道",
+        "description": "仅旧专版模式发起新工程委托的授权入口，需配置并核验主人身份；安装与只读查看不需要，新增通用模式也不依赖此通道。旧专版的其他渠道授权尚未适配。",
+        "url": "https://open.feishu.cn",
+        "optional": true
+      }
+    ]
+  },
   "documentation": {
     "readme": "docs/START.md",
     "changelog": "CHANGELOG.md"
   },
   "desktop": {
-    "title": "Hermes",
+    "title": "Hermes x DFSC",
     "surface": "main-view",
-    "connection": { "protocol": "agent-bridge-v1" },
+    "connection": {
+      "protocol": "agent-bridge-v1",
+      "guides": {
+        "setup": "setup",
+        "firstTask": "first-task",
+        "troubleshooting": "troubleshooting"
+      }
+    },
     "symbol": "bot",
     "icon": { "light": "icons/toolbar-light.png", "dark": "icons/toolbar-dark.png" },
     "defaultPage": "start",
