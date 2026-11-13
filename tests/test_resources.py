@@ -11,6 +11,22 @@ PLUGIN = ROOT / 'plugins/hermes-engineering-bridge'
 
 
 class ResourceTests(unittest.TestCase):
+    def test_risk_declarations_are_host_supported_data_with_reachable_guidance(self):
+        presentation = json.loads((PLUGIN / 'dfsc.plugin.json').read_text(encoding='utf-8'))
+        notices = presentation['confirmations']
+        self.assertEqual([notice['action'] for notice in notices], ['external.delegate', 'external.policy'])
+        self.assertEqual(len({notice['id'] for notice in notices}), 2)
+        for notice in notices:
+            self.assertEqual(set(notice), {'id', 'version', 'action', 'policy', 'title', 'message', 'confirmLabel'})
+            self.assertEqual(notice['policy'], 'remember')
+            self.assertLessEqual(len(notice['message']), 1600)
+            self.assertIn('不是', notice['message'])
+        risks = (PLUGIN / 'docs/RISKS.md').read_text(encoding='utf-8')
+        for text in ('不是操作系统文件沙箱', '撤销不能恢复', 'host-confirmation-required',
+                     'plugin-association-required', '记住', '不会自动到期'):
+            self.assertIn(text, risks)
+        self.assertIn('(RISKS.md)', (PLUGIN / 'docs/START.md').read_text(encoding='utf-8'))
+
     def test_desktop_entry_uses_local_document_pages(self):
         manifest = json.loads((PLUGIN / 'step.plugin.json').read_text(encoding='utf-8'))
         presentation = json.loads((PLUGIN / 'dfsc.plugin.json').read_text(encoding='utf-8'))

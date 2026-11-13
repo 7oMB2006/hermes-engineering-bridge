@@ -15,12 +15,12 @@
       },
       {
         "name": "Hermes x DFSC companion",
-        "description": "本项目维护的 Hermes 侧桥接插件，版本标识为 0.2.0；源码新增显式通用协议适配，尚未发布。需在独立 profile 安装并由用户启用、重载。",
+        "description": "本项目维护的 Hermes 侧桥接插件，版本标识为 0.3.0；源码新增显式通用协议及风险确认能力检查，尚未发布。需在独立 profile 安装并由用户启用、重载。",
         "url": "https://github.com/7oMB2006/hermes-engineering-bridge"
       },
       {
         "name": "DFSC Agent Bridge 配套宿主",
-        "description": "需要实际支持所选协议的构建：新增 dfsc-external-v1 源码路径尚未发布，或既有 DFSC Hermes 专版。DFSC 版本号达标不证明可用，均需独立配对与目录授权。",
+        "description": "需要实际支持所选协议的构建：新增 dfsc-external-v1 及插件风险确认接口源码路径尚未发布，或既有 DFSC Hermes 专版。DFSC 版本号达标不证明可用，均需独立配对与目录授权；新版通用模式还需明确关联本插件。",
         "url": "https://github.com/7oMB2006/hermes-engineering-bridge"
       },
       {
@@ -35,6 +35,26 @@
     "readme": "docs/START.md",
     "changelog": "CHANGELOG.md"
   },
+  "confirmations": [
+    {
+      "id": "delegate-approval",
+      "version": "1",
+      "action": "external.delegate",
+      "policy": "remember",
+      "title": "让 Hermes 代你审阅审批",
+      "message": "Hermes 会结合任务目标判断所选请求，但模型可能误判，也可能受工程文件或工具输出中的恶意指令影响。错误批准可能导致文件误改、删除或命令执行；授权目录不是操作系统沙箱。勾选高风险操作后，它可代你批准该类请求；勾选提问与回答后，它可替你作出工程选择。无法可靠判断时应转交人工，唤醒不是延时自动放行。",
+      "confirmLabel": "知晓风险，委托审批"
+    },
+    {
+      "id": "persistent-authorization",
+      "version": "1",
+      "action": "external.policy",
+      "policy": "remember",
+      "title": "为后续任务保留审批授权",
+      "message": "长期委托会用于此 Agent 和此项目的后续新任务，并跨 DFSC 重启保留；选择直到手动撤销时不会自动到期。「代我批准」下，常规命令和文件写入由 DFSC 自动执行，并非每次都经过 Hermes 审阅。Hermes 审阅剩余请求也可能误判，造成文件误改、删除或其他命令影响；授权目录不是沙箱。高风险操作与代答问题分别授权。停止或撤销不能恢复已执行操作，也不保证能中止已启动的所有子进程。",
+      "confirmLabel": "知晓风险，设置长期委托"
+    }
+  ],
   "desktop": {
     "title": "Hermes x DFSC",
     "surface": "main-view",

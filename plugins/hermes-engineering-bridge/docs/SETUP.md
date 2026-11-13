@@ -1,5 +1,8 @@
 # 连接准备
 
+自动执行和长期委托前先阅读 [自动执行与审批风险](RISKS.md)。
+风险确认不等于授权，Agent 不能替你点击宿主的风险确认。
+
 先在完整工作台的「连接」页选择目标 Hermes 身份目录（profile），再检查。
 不知道目录在哪时，先从你启动 Hermes 时使用的 profile 确认，不猜默认身份，
 不把模型 Key、令牌或消息渠道凭据发进聊天。
@@ -13,7 +16,7 @@
 准备自己的环境、模型和独立 profile，并确认它能正常回复普通消息。
 安装资源与只读检查无需飞书。当前 companion 0.2.0 发起新工程所需的人工授权、
 控制命令和回调在旧专版模式仍使用已配置飞书；
-新增通用本机模式不依赖飞书，但没有旧模式的人工授权回调和事件唤醒。
+新增通用本机模式不依赖飞书；支持的会话可定向接收审批唤醒，不是旧模式的真人授权回调。
 
 ## Companion 配置
 
@@ -43,11 +46,13 @@ DFSC `>=0.6.0` 是版本下限，不证明同号安装包已包含连接协议�
 
 ### 新增通用本机模式
 
-明确支持 `dfsc-external-v1` 的构建才可使用，不能套用到任意 0.6.0：
+明确支持 `dfsc-external-v1` 和插件风险确认接口的构建才可使用，不能套用到任意 0.6.0：
 
 1. 在 DFSC「远程访问 → 外部 Agent」打开「允许本机 Agent 接入」。
-2. 填写连接名称，选择一个空练习项目的根目录，核对确认页面后授权。
-   这是允许本机进程派工，不会验证后续聊天是否来自真人；审批仍只在本机处理。
+2. 先安装本项目资源插件，填写连接名称，选择一个空练习项目的根目录，
+   在「关联插件」选择 Hermes x DFSC，核对确认页面后授权。
+   已有普通连接可先停止任务、撤销长期委托，再使用「关联插件」确认。
+   这是允许本机进程派工，不会验证后续聊天是否来自真人；审批默认在本机处理。
 3. 复制界面给出的非秘密连接配置路径 `configPath`，不是 model/human 描述符。
 4. 在同一份项目源码根目录，用已有 Hermes 环境运行：
 
@@ -66,8 +71,10 @@ python -X utf8 -B companion/install_profile.py --profile-home PROFILE --desktop-
 python -X utf8 -B companion/external.py --config HOST_CONFIG system.capabilities
 ```
 
-应看到 `protocol=dfsc-external-v1`、本身份和实际授权根目录，
+应看到 `protocol=dfsc-external-v1`、本身份、实际授权根目录及 `riskConfirmation=ready`，
 支持创建、单轮提交、查询和停止；没有 `human.*`、审批回调、预算或自动验收。
+`host-confirmation-required` 表示需升级宿主，`plugin-association-required` 表示需明确关联本插件。
+两种情况不会继续新派工或代审批，但仍允许查询和停止现有任务。
 详细安装与错误说明见项目源码的 `companion/EXTERNAL.md`。
 
 ### 旧 DFSC Hermes 专版模式

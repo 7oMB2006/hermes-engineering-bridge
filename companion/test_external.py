@@ -38,7 +38,8 @@ class ExternalTests(unittest.TestCase):
         self.requests = []
         self.responses = {}
         self.caps = {'protocol': external.PROTOCOL, 'agentId': self.agent_id,
-                     'roots': [str(self.project)], 'methods': list(external.METHODS)}
+                     'roots': [str(self.project)], 'methods': list(external.METHODS),
+                     'pluginConfirmations': {'version': 1, 'pluginId': 'hermes-engineering-bridge'}}
         test = self
 
         class Handler(socketserver.StreamRequestHandler):
@@ -197,7 +198,8 @@ class ExternalTests(unittest.TestCase):
             with self.subTest(changes=changes), self.assertRaises(external.ExternalError):
                 external.call(self.config, 'task.list')
             self.caps = {'protocol': external.PROTOCOL, 'agentId': self.agent_id,
-                         'roots': [str(self.project)], 'methods': list(external.METHODS)}
+                         'roots': [str(self.project)], 'methods': list(external.METHODS),
+                         'pluginConfirmations': {'version': 1, 'pluginId': 'hermes-engineering-bridge'}}
         self.assertTrue(all(r['method'] == 'system.capabilities' for r in self.requests))
 
     def test_only_exact_authorized_root_can_create(self):
@@ -207,6 +209,25 @@ class ExternalTests(unittest.TestCase):
             with self.subTest(path=path), self.assertRaises(external.ExternalError):
                 external.call(self.config, 'task.create', {'key': 'k', 'title': 'T', 'cwd': path})
         self.assertTrue(all(r['method'] == 'system.capabilities' for r in self.requests))
+
+    def test_missing_host_confirmation_or_wrong_plugin_blocks_mutations_but_keeps_read_and_stop(self):
+        for marker, code in [(None, 'host-confirmation-required'), ({'version': True}, 'host-confirmation-required'),
+                             ({'version': 2}, 'host-confirmation-required'),
+                             ({'version': 1}, 'plugin-association-required'),
+                             ({'version': 1, 'pluginId': 'another-plugin'}, 'plugin-association-required')]:
+            self.caps['pluginConfirmations'] = marker
+            for method, params in [('task.create', {'key': 'k', 'title': 'T', 'cwd': str(self.project)}),
+                                   ('run.submit', {'taskId': 'task-fixture', 'key': 'k', 'message': 'Go'}),
+                                   ('approval.list', {'taskId': 'task-fixture'}),
+                                   ('approval.respond', {'taskId': 'task-fixture', 'requestId': 'r',
+                                                         'decision': 'allow', 'reason': 'Review'})]:
+                before = len(self.requests)
+                with self.subTest(marker=marker, method=method), self.assertRaises(external.ExternalError) as error:
+                    external.call(self.config, method, params)
+                self.assertEqual(str(error.exception), code)
+                self.assertTrue(all(r['method'] == 'system.capabilities' for r in self.requests[before:]))
+            self.assertEqual(external.call(self.config, 'task.get', {'taskId': 'task-fixture'})['id'], 'task-fixture')
+            self.assertEqual(external.call(self.config, 'task.stop', {'taskId': 'task-fixture'})['id'], 'task-fixture')
 
     def test_foreign_task_and_out_of_scope_result_rejected(self):
         for task in [self.task(origin={'agentProfile': 'other'}), self.task(cwd=str(self.root))]:
