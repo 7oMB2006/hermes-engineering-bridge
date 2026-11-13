@@ -23,7 +23,9 @@ python -X utf8 -B companion/install_profile.py --profile-home PROFILE --desktop-
 
 安装器保留备份，不重启或重载 Hermes；由用户启用、重载对应 profile。
 已有另一连接的 profile 不会被静默覆盖，确认切换才用 `--replace-connection`。
-本模式仅创建、单轮派工、查询和停止自己的任务，审批只在 DFSC 本机处理。
+本模式仅创建、单轮派工、查询和停止自己的任务。默认由 DFSC 本机审批；
+支持该能力的新宿主可由用户按任务、类型和有效期委托 Hermes 审查普通工具请求。
+高风险、未知请求与提问仍在本机处理；通用模式没有后台审批唤醒，不承诺持续无人值守。
 没有预算、自动修正、事件唤醒或验收 API。`completed` 仅说明原生轮次结束，
 不等于测试通过或用户已验收。本机进程获准接入也不证明后续聊天来自真人。
 详情见 [通用本机接入](companion/EXTERNAL.md)。
