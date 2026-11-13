@@ -146,7 +146,7 @@ class ExternalTests(unittest.TestCase):
         description = next(line.removeprefix('description: ') for line in metadata.splitlines()
                            if line.startswith('description: '))
         for boundary in ['explicitly configured', 'legacy or dfsc-external-v1',
-                         'capabilities depend on that protocol', 'External-mode approvals remain local',
+                         'capabilities depend on that protocol', 'External-mode approvals default to local',
                          'human approvals and event wakeups are legacy-only']:
             self.assertIn(boundary, description)
         captured = {}
@@ -165,7 +165,7 @@ class ExternalTests(unittest.TestCase):
         self.assertFalse(schema['parameters']['additionalProperties'])
         self.assertFalse(properties['params']['additionalProperties'])
         self.assertIn('task.create.id', properties['params']['properties']['taskId']['description'])
-        self.assertIn('DFSC 本机处理', schema['description'])
+        self.assertIn('DFSC 本机处理审批', schema['description'])
         instructions = sections['dfsc-external']()
         for boundary in ['当前 DFSC 进程', 'resultAvailable=false', '不能重新派工', '不读取整个原生历史']:
             self.assertIn(boundary, instructions)
@@ -277,6 +277,77 @@ class ExternalTests(unittest.TestCase):
                                 capture_output=True, text=True, encoding='utf-8', timeout=10)
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(self.requests, [])
+
+    def approval(self, **changes):
+        return {'requestId': '12345678-1234-1234-1234-123456789abc', 'category': 'command',
+                'toolName': 'run_command', 'callId': 'native-call', 'input': 'echo hello', **changes}
+
+    def approvals(self, **changes):
+        return {'taskId': 'task-fixture', 'delegation': {'expiresAt': 1900000000000, 'categories': ['command']},
+                'requests': [self.approval()], **changes}
+
+    def test_task_approval_lease_and_capabilities_are_projected_without_management_authority(self):
+        self.caps['approvals'] = 'local-with-explicit-task-delegation'
+        caps = external.call(self.config, 'system.capabilities')
+        self.assertEqual(caps['approvals'], self.caps['approvals'])
+        self.responses['task.get'] = {'ok': True, 'result': self.task(approvalDelegation=self.approvals()['delegation'])}
+        self.assertEqual(external.call(self.config, 'task.get', {'taskId': 'task-fixture'})['approvalDelegation'],
+                         self.approvals()['delegation'])
+        for method in ('approval.grant', 'human.grant', 'approval.extend'):
+            with self.assertRaises(external.ExternalError):
+                external.call(self.config, method, {})
+
+    def test_delegated_request_and_single_decision_use_exact_ids_and_own_scope(self):
+        self.responses['approval.list'] = {'ok': True, 'result': self.approvals()}
+        params = {'taskId': 'task-fixture'}
+        self.assertEqual(external.call(self.config, 'approval.list', params), self.approvals())
+        self.assertEqual([request['method'] for request in self.requests],
+                         ['system.capabilities', 'task.get', 'approval.list'])
+        for decision in ('allow', 'deny', 'escalate'):
+            answer = {**params, 'requestId': self.approval()['requestId'], 'decision': decision, 'reason': 'Matches the user goal'}
+            receipt = {key: value for key, value in answer.items() if key != 'reason'} | {'outcome': 'applied'}
+            self.responses['approval.respond'] = {'ok': True, 'result': receipt}
+            self.assertEqual(external.call(self.config, 'approval.respond', answer), receipt)
+        self.assertNotIn(self.descriptor['token'], json.dumps(self.approvals()))
+
+    def test_old_host_missing_methods_and_foreign_task_fail_before_approval_send(self):
+        self.caps['methods'] = [method for method in external.METHODS if not method.startswith('approval.')]
+        with self.assertRaises(external.ExternalError):
+            external.call(self.config, 'approval.list', {'taskId': 'task-fixture'})
+        self.assertTrue(all(request['method'] == 'system.capabilities' for request in self.requests))
+        self.caps['methods'] = list(external.METHODS)
+        self.responses['task.get'] = {'ok': True, 'result': self.task(origin={'agentProfile': 'foreign'})}
+        with self.assertRaises(external.ExternalError):
+            external.call(self.config, 'approval.list', {'taskId': 'task-fixture'})
+        self.assertFalse(any(request['method'] == 'approval.list' for request in self.requests))
+
+    def test_malformed_or_secret_approval_projection_is_not_model_visible(self):
+        for result in [self.approvals(taskId='foreign'), self.approvals(delegation=None),
+                       self.approvals(requests=[self.approval(category='file')]),
+                       self.approvals(delegation={'expiresAt': 1900000000000, 'categories': ['file']},
+                                      requests=[self.approval(category='file', verificationCommand='echo surprise')]),
+                       self.approvals(requests=[self.approval(input=self.descriptor['token'])]),
+                       self.approvals(requests=[self.approval(input='x' * 13000)]),
+                       self.approvals(requests=[self.approval(rawRequest='unexpected')]),
+                       self.approvals(requests=[self.approval(), self.approval()]),
+                       self.approvals(delegation={'expiresAt': True, 'categories': ['command']})]:
+            self.responses['approval.list'] = {'ok': True, 'result': result}
+            with self.subTest(result=result), self.assertRaises(external.ExternalError):
+                external.call(self.config, 'approval.list', {'taskId': 'task-fixture'})
+        self.responses['approval.list'] = {'ok': True, 'result': self.approvals(delegation=None, requests=[])}
+        self.assertEqual(external.call(self.config, 'approval.list', {'taskId': 'task-fixture'})['requests'], [])
+
+    def test_approval_reason_is_required_and_unknown_or_persistent_answers_never_reach_socket(self):
+        base = {'taskId': 'task-fixture', 'requestId': self.approval()['requestId'], 'decision': 'allow', 'reason': 'ok'}
+        for params in [base | {'reason': ''}, base | {'reason': 'x' * 501}, base | {'decision': 'always'},
+                       base | {'confirmed': True}, {key: value for key, value in base.items() if key != 'reason'}]:
+            with self.assertRaises(external.ExternalError):
+                external.call(self.config, 'approval.respond', params)
+        self.assertEqual(self.requests, [])
+        self.responses['approval.respond'] = {'ok': False, 'error': 'connector:approval-expired'}
+        with self.assertRaises(external.ExternalError) as caught:
+            external.call(self.config, 'approval.respond', base)
+        self.assertEqual(str(caught.exception), 'connector:approval-expired')
 
     def test_installer_switch_requires_explicit_confirmation_and_preserves_state(self):
         home = self.root / 'hermes'
