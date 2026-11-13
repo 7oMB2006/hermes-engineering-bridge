@@ -41,8 +41,9 @@ class ResourceTests(unittest.TestCase):
         self.assertEqual(icon[12:16], b'IHDR')
         self.assertEqual(int.from_bytes(icon[16:20], 'big'), 256)
         self.assertEqual(int.from_bytes(icon[20:24], 'big'), 256)
+        # Approved full composition, resized without cropping.
         self.assertEqual(hashlib.sha256(icon).hexdigest(),
-                         '94d7d38c86a760ac89095dc3bed7eb26da2d6eb60903345797e43e374cd9204c')
+                         '3080e789fcd8b557ef297c922e45ec286b9128dc8ad59aac3730596fce929a1e')
 
     def test_toolbar_icons_are_separate_native_17px_theme_variants(self):
         presentation = json.loads((PLUGIN / 'dfsc.plugin.json').read_text(encoding='utf-8'))
