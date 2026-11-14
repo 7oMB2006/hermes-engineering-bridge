@@ -1,8 +1,8 @@
 name: hermes-dfsc
 label: Hermes 工程桥
-version: 0.2.0
+version: 0.3.0
 kind: standalone
-description: Local DFSC bridge for explicitly configured legacy or dfsc-external-v1 profiles; capabilities depend on that protocol. External-mode approvals default to local, with explicit per-task delegation on supported hosts; remote human approvals and event wakeups are legacy-only.
+description: Local DFSC bridge for explicitly configured legacy or dfsc-external-v1 profiles; capabilities depend on that protocol. External-mode approvals default to local, with explicit task or persistent scoped delegation and session-bound approval wakeups on supported hosts; remote human approvals remain legacy-only.
 author: Local Hermes owner
 provides_tools: [dfsc_engineering]
 provides_hooks: [pre_gateway_dispatch, post_gateway_admission, on_session_start]

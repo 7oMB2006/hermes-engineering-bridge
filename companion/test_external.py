@@ -38,7 +38,8 @@ class ExternalTests(unittest.TestCase):
         self.requests = []
         self.responses = {}
         self.caps = {'protocol': external.PROTOCOL, 'agentId': self.agent_id,
-                     'roots': [str(self.project)], 'methods': list(external.METHODS)}
+                     'roots': [str(self.project)], 'methods': list(external.METHODS),
+                     'pluginConfirmations': {'version': 1, 'pluginId': 'hermes-engineering-bridge'}}
         test = self
 
         class Handler(socketserver.StreamRequestHandler):
@@ -142,12 +143,12 @@ class ExternalTests(unittest.TestCase):
 
     def test_tool_metadata_is_searchable_without_expanding_protocol(self):
         metadata = (Path(__file__).parent / 'plugin.yaml').read_text(encoding='utf-8')
-        self.assertIn('version: 0.2.0\n', metadata)
+        self.assertIn('version: 0.3.0\n', metadata)
         description = next(line.removeprefix('description: ') for line in metadata.splitlines()
                            if line.startswith('description: '))
         for boundary in ['explicitly configured', 'legacy or dfsc-external-v1',
                          'capabilities depend on that protocol', 'External-mode approvals default to local',
-                         'human approvals and event wakeups are legacy-only']:
+                         'session-bound approval wakeups', 'remote human approvals remain legacy-only']:
             self.assertIn(boundary, description)
         captured = {}
         sections = {}
@@ -197,7 +198,8 @@ class ExternalTests(unittest.TestCase):
             with self.subTest(changes=changes), self.assertRaises(external.ExternalError):
                 external.call(self.config, 'task.list')
             self.caps = {'protocol': external.PROTOCOL, 'agentId': self.agent_id,
-                         'roots': [str(self.project)], 'methods': list(external.METHODS)}
+                         'roots': [str(self.project)], 'methods': list(external.METHODS),
+                         'pluginConfirmations': {'version': 1, 'pluginId': 'hermes-engineering-bridge'}}
         self.assertTrue(all(r['method'] == 'system.capabilities' for r in self.requests))
 
     def test_only_exact_authorized_root_can_create(self):
@@ -207,6 +209,25 @@ class ExternalTests(unittest.TestCase):
             with self.subTest(path=path), self.assertRaises(external.ExternalError):
                 external.call(self.config, 'task.create', {'key': 'k', 'title': 'T', 'cwd': path})
         self.assertTrue(all(r['method'] == 'system.capabilities' for r in self.requests))
+
+    def test_missing_host_confirmation_or_wrong_plugin_blocks_mutations_but_keeps_read_and_stop(self):
+        for marker, code in [(None, 'host-confirmation-required'), ({'version': True}, 'host-confirmation-required'),
+                             ({'version': 2}, 'host-confirmation-required'),
+                             ({'version': 1}, 'plugin-association-required'),
+                             ({'version': 1, 'pluginId': 'another-plugin'}, 'plugin-association-required')]:
+            self.caps['pluginConfirmations'] = marker
+            for method, params in [('task.create', {'key': 'k', 'title': 'T', 'cwd': str(self.project)}),
+                                   ('run.submit', {'taskId': 'task-fixture', 'key': 'k', 'message': 'Go'}),
+                                   ('approval.list', {'taskId': 'task-fixture'}),
+                                   ('approval.respond', {'taskId': 'task-fixture', 'requestId': 'r',
+                                                         'decision': 'allow', 'reason': 'Review'})]:
+                before = len(self.requests)
+                with self.subTest(marker=marker, method=method), self.assertRaises(external.ExternalError) as error:
+                    external.call(self.config, method, params)
+                self.assertEqual(str(error.exception), code)
+                self.assertTrue(all(r['method'] == 'system.capabilities' for r in self.requests[before:]))
+            self.assertEqual(external.call(self.config, 'task.get', {'taskId': 'task-fixture'})['id'], 'task-fixture')
+            self.assertEqual(external.call(self.config, 'task.stop', {'taskId': 'task-fixture'})['id'], 'task-fixture')
 
     def test_foreign_task_and_out_of_scope_result_rejected(self):
         for task in [self.task(origin={'agentProfile': 'other'}), self.task(cwd=str(self.root))]:
@@ -348,6 +369,108 @@ class ExternalTests(unittest.TestCase):
         with self.assertRaises(external.ExternalError) as caught:
             external.call(self.config, 'approval.respond', base)
         self.assertEqual(str(caught.exception), 'connector:approval-expired')
+
+    def test_persistent_lease_and_question_answers_are_strictly_bounded(self):
+        lease = {'expiresAt': None, 'policyId': '12345678-1234-1234-1234-123456789abc',
+                 'categories': ['risk', 'question']}
+        result = self.approvals(delegation=lease, requests=[self.approval(category='question', toolName='clarify_user',
+                                                                        input='[]')])
+        self.responses['approval.list'] = {'ok': True, 'result': result}
+        self.assertEqual(external.call(self.config, 'approval.list', {'taskId': 'task-fixture'}), result)
+        answers = [{'id': 'scope', 'value': 'tests', 'wasCustom': False}]
+        params = {'taskId': 'task-fixture', 'requestId': self.approval()['requestId'],
+                  'decision': 'allow', 'reason': 'The goal specifies tests', 'answers': answers}
+        receipt = {'taskId': params['taskId'], 'requestId': params['requestId'], 'decision': 'allow', 'outcome': 'applied'}
+        self.responses['approval.respond'] = {'ok': True, 'result': receipt}
+        self.assertEqual(external.call(self.config, 'approval.respond', params), receipt)
+        for patch_ in [{'answers': []}, {'answers': answers * 13}, {'decision': 'deny'},
+                       {'answers': [{'id': 'scope', 'value': 'tests', 'wasCustom': 'false'}]},
+                       {'answers': [{'id': 'scope', 'value': 'tests', 'wasCustom': False, 'token': 'no'}]}]:
+            with self.subTest(patch_=patch_), self.assertRaises(external.ExternalError):
+                external.call(self.config, 'approval.respond', {**params, **patch_})
+
+    def test_session_binding_uses_trusted_turn_context_not_kwargs_or_environment(self):
+        key = NS(bound_session_key=lambda: 'trusted-live-session')
+        with patch.dict(sys.modules, {'gateway.session_context': key}):
+            self.assertEqual(external._session_key(), 'trusted-live-session')
+        key.bound_session_key = lambda: ''
+        with patch.dict(sys.modules, {'gateway.session_context': key}), patch.dict('os.environ', {'HERMES_SESSION_KEY': 'foreign'}):
+            self.assertIsNone(external._session_key())
+        runtime = external.ExternalIntegration(self.config, NS(inject_message=lambda *a, **kw: True))
+        with patch.object(external, '_session_key', return_value=None), patch.object(external, 'call', return_value=self.task()):
+            result = json.loads(runtime.tool({'method': 'task.create', 'params': {}}, session_key='forged'))
+        self.assertEqual(result['approvalWakeup'], 'unavailable')
+        self.assertEqual(runtime.routes, {})
+        runtime.stop()
+        legacy = external.ExternalIntegration(self.config, NS(inject_message=lambda *a, **kw: True,
+                                                              _manager=NS(_cli_ref=NS(session_id='current'))))
+        self.assertFalse(legacy.bind('task-fixture', 'trusted-old-session'))
+        self.assertEqual(legacy.routes, {})
+        legacy.stop()
+
+    def test_event_wakes_only_original_session_and_never_answers_a_request(self):
+        injections = []
+        ctx = NS(inject_message=lambda text, **kwargs: injections.append((text, kwargs)) or True)
+        runtime = external.ExternalIntegration(self.config, ctx)
+        runtime.routes['task-fixture'] = 'original-session'
+        value = {'epoch': '12345678-1234-1234-1234-123456789abc', 'cursor': 'a' * 64,
+                 'tasks': [{'taskId': 'task-fixture', 'phase': 'running', 'requestIds': [self.approval()['requestId']]}]}
+        self.responses['approval.list'] = {'ok': True, 'result': self.approvals()}
+        external._events(value, ['task-fixture'])
+        runtime.deliver(value)
+        runtime.deliver(value)
+        self.assertEqual(len(injections), 1)
+        self.assertEqual(injections[0][1], {'session_key': 'original-session'})
+        self.assertIn('approval.list', injections[0][0])
+        self.assertNotIn('echo hello', injections[0][0], 'notification never imports approval instructions')
+        self.assertFalse(any(r['method'] == 'approval.respond' for r in self.requests))
+        with patch.object(runtime, 'consume'):
+            self.assertFalse(runtime.bind('task-fixture', 'another-session'))
+        runtime.stop()
+        runtime.deliver(value)
+        self.assertEqual(len(injections), 1)
+
+    def test_rejected_injection_retries_but_expired_requests_and_terminal_tasks_never_wake(self):
+        injections = []
+        accept = False
+        def inject(*args, **kwargs):
+            injections.append(kwargs)
+            return accept
+        runtime = external.ExternalIntegration(self.config, NS(inject_message=inject))
+        runtime.routes['task-fixture'] = 'original'
+        value = {'epoch': '12345678-1234-1234-1234-123456789abc', 'cursor': 'a' * 64,
+                 'tasks': [{'taskId': 'task-fixture', 'phase': 'running', 'requestIds': [self.approval()['requestId']]}]}
+        self.responses['approval.list'] = {'ok': True, 'result': self.approvals()}
+        runtime.deliver(value); self.assertFalse(runtime.sent)
+        accept = True
+        runtime.deliver(value); self.assertEqual(len(runtime.sent), 1)
+        runtime.sent.clear()
+        self.responses['approval.list'] = {'ok': True, 'result': self.approvals(delegation=None, requests=[])}
+        runtime.deliver(value); self.assertEqual(len(injections), 2)
+        value['tasks'][0]['phase'] = 'interrupted'
+        runtime.deliver(value); self.assertEqual(runtime.routes, {})
+        runtime.stop()
+
+    def test_event_projection_rejects_other_tasks_unknown_fields_or_forged_request_ids(self):
+        valid = {'epoch': '12345678-1234-1234-1234-123456789abc', 'cursor': 'a' * 64,
+                 'tasks': [{'taskId': 'task-fixture', 'phase': 'running', 'requestIds': []}]}
+        for patch_ in [{'tasks': []}, {'epoch': 'unknown'}, {'cursor': 'short'},
+                       {'tasks': [valid['tasks'][0] | {'taskId': 'foreign'}]},
+                       {'tasks': [valid['tasks'][0] | {'input': 'untrusted'}]},
+                       {'tasks': [valid['tasks'][0] | {'requestIds': ['forged']}]}]:
+            with self.subTest(patch_=patch_), self.assertRaises(external.ExternalError):
+                external._events(valid | patch_, ['task-fixture'])
+
+    def test_background_worker_negotiates_old_hosts_without_model_polling_and_stops(self):
+        runtime = external.ExternalIntegration(self.config, NS(inject_message=lambda *a, **kw: self.fail('Old host wake')))
+        self.assertTrue(runtime.bind('task-fixture', 'trusted-session'))
+        for _ in range(50):
+            if self.requests:
+                break
+            threading.Event().wait(0.01)
+        runtime.stop()
+        self.assertFalse(runtime.thread.is_alive())
+        self.assertFalse(any(r['method'] == 'events.wait' for r in self.requests))
 
     def test_installer_switch_requires_explicit_confirmation_and_preserves_state(self):
         home = self.root / 'hermes'
